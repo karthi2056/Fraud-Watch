@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FraudWatch</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>FraudWatch</h1>
+    <p>Transaction anomaly flagging and manual review</p>
+  </header>
+
+  <main>
+    <!-- New transaction -->
+    <section class="card span-4">
+      <h2>New Transaction</h2>
+      <form id="txnForm">
+        <label>Sender account <input id="txnSender" required placeholder="ACC-1"></label>
+        <label>Receiver account <input id="txnReceiver" required placeholder="ACC-2"></label>
+        <label>Amount <input id="txnAmount" type="number" step="0.01" min="0" required placeholder="15000"></label>
+        <button type="submit">Submit transaction</button>
+      </form>
+      <div id="txnResult" class="result"></div>
+    </section>
+
+    <!-- Dashboard -->
+    <section class="card span-8">
+      <h2>Dashboard: flagged transactions by rule</h2>
+      <div id="dashboard" class="bars"></div>
+    </section>
+
+    <!-- Review queue -->
+    <section class="card span-12">
+      <h2>Review Queue</h2>
+      <div class="toolbar">
+        <label class="grow">Reviewer name <input id="reviewer" placeholder="Your name"></label>
+        <label>Status
+          <select id="statusFilter">
+            <option value="PENDING_REVIEW">Pending review</option>
+            <option value="APPROVED">Approved</option>
+            <option value="BLOCKED">Blocked</option>
+            <option value="">All</option>
+          </select>
+        </label>
+        <button class="ghost" id="refreshQueue" type="button">Refresh</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>ID</th><th>Txn</th><th>Sender</th><th>Receiver</th><th>Amount</th>
+          <th>Triggered rules</th><th>Flagged at</th><th>Status</th><th>Action</th>
+        </tr></thead>
+        <tbody id="queueBody"></tbody>
+      </table></div>
+    </section>
+
+    <!-- Rules -->
+    <section class="card span-7">
+      <h2>Rules</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Name</th><th>Type</th><th>Condition</th><th>State</th><th></th></tr></thead>
+        <tbody id="rulesBody"></tbody>
+      </table></div>
+    </section>
+
+    <section class="card span-5">
+      <h2 id="ruleFormTitle">Add Rule</h2>
+      <form id="ruleForm">
+        <label>Name <input id="ruleName" required></label>
+        <label>Type
+          <select id="ruleType">
+            <option value="AMOUNT_THRESHOLD">Amount threshold</option>
+            <option value="VELOCITY">Velocity (repeated transfers)</option>
+          </select>
+        </label>
+        <label id="thresholdWrap">Flag amounts above <input id="ruleThreshold" type="number" step="0.01" min="0"></label>
+        <div id="velocityWrap" class="row" hidden>
+          <label>More than N transactions <input id="ruleMax" type="number" min="1"></label>
+          <label>Within (seconds) <input id="ruleWindow" type="number" min="1"></label>
+        </div>
+        <label class="checkbox"><input id="ruleActive" type="checkbox" checked> Active</label>
+        <div class="row">
+          <button type="submit" id="ruleSubmit">Save rule</button>
+          <button type="button" class="ghost" id="ruleCancel" hidden>Cancel edit</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Transactions -->
+    <section class="card span-12">
+      <h2>All Transactions</h2>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>ID</th><th>Sender</th><th>Receiver</th><th>Amount</th><th>Time</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="txnBody"></tbody>
+      </table></div>
+    </section>
+  </main>
+
+  <div id="toast"></div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const money = (n) => Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const when = (t) => (t ? new Date(t).toLocaleString() : '');
+    const badge = (s) => `<span class="badge ${esc(s)}">${esc(String(s).replace('_', ' '))}</span>`;
+
+    let rulesCache = [];
+    let editingRuleId = null;
+
+    async function api(path, options) {
+      const opts = Object.assign({ headers: { 'Content-Type': 'application/json' } }, options);
+      const res = await fetch(path, opts);
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch (e) { /* not JSON */ }
+      if (!res.ok) {
+        const details = data && data.details && data.details.length ? ': ' + data.details.join('; ') : '';
+        throw new Error(((data && data.message) || res.statusText || 'Request failed') + details);
+      }
+      return data;
+    }
+
+    let toastTimer;
+    function toast(message, kind) {
+      const t = $('#toast');
+      t.textContent = message;
+      t.className = 'show ' + (kind || 'ok');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.className = ''; }, 3500);
+    }
+
+    /* ---------- Transactions ---------- */
+    $('#txnForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const box = $('#txnResult');
+      try {
+        const t = await api('/api/transactions', {
+          method: 'POST',
+          body: JSON.stringify({
+            senderAccount: $('#txnSender').value,
+            receiverAccount: $('#txnReceiver').value,
+            amount: $('#txnAmount').value
+          })
+        });
+        if (t.status === 'FLAGGED') {
+          box.className = 'result show warn';
+          box.innerHTML = `Transaction #${t.id} was <b>flagged</b> and sent for review.<br>Triggered: `
+            + (t.triggeredRules || []).map((r) => `<span class="badge rule">${esc(r)}</span>`).join('');
+        } else {
+          box.className = 'result show ok';
+          box.innerHTML = `Transaction #${t.id} passed all rules and is <b>completed</b>.`;
+        }
+        $('#txnForm').reset();
+        loadAll();
+      } catch (err) {
+        box.className = 'result';
+        toast(err.message, 'err');
+      }
+    });
+
+    async function loadTransactions() {
+      const list = await api('/api/transactions');
+      $('#txnBody').innerHTML = list.length ? list.map((t) => `
+        <tr>
+          <td>#${t.id}</td>
+          <td>${esc(t.senderAccount)}</td>
+          <td>${esc(t.receiverAccount)}</td>
+          <td>${money(t.amount)}</td>
+          <td>${when(t.timestamp)}</td>
+          <td>${badge(t.status)}</td>
+          <td class="actions"><button class="small ghost" data-complete="${t.id}">Complete</button></td>
+        </tr>`).join('') : '<tr><td colspan="7" class="empty">No transactions yet.</td></tr>';
+    }
+
+    $('#txnBody').addEventListener('click', async (e) => {
+      const id = e.target.dataset.complete;
+      if (!id) return;
+      try {
+        await api(`/api/transactions/${id}/complete`, { method: 'POST' });
+        toast(`Transaction #${id} is completed.`);
+      } catch (err) {
+        toast(err.message, 'err');
+      }
+    });
+
+    /* ---------- Review queue ---------- */
+    async function loadQueue() {
+      const status = $('#statusFilter').value;
+      const qs = new URLSearchParams({ size: 50 });
+      if (status) qs.set('status', status);
+      const page = await api('/api/flagged?' + qs.toString());
+      const rows = page.content || [];
+      $('#queueBody').innerHTML = rows.length ? rows.map((f) => {
+        const t = f.transaction || {};
+        const rules = (f.rules || []).map((r) => `<span class="badge rule">${esc(r.name)}</span>`).join('');
+        const action = f.reviewStatus === 'PENDING_REVIEW'
+          ? `<button class="small approve" data-review="${f.id}" data-decision="APPROVED">Approve</button>
+             <button class="small block" data-review="${f.id}" data-decision="BLOCKED">Block</button>`
+          : (f.reviewOutcome ? `<span title="${esc(f.reviewOutcome.comment || '')}">by ${esc(f.reviewOutcome.reviewer)}</span>` : '');
+        return `<tr>
+          <td>#${f.id}</td>
+          <td>#${t.id}</td>
+          <td>${esc(t.senderAccount)}</td>
+          <td>${esc(t.receiverAccount)}</td>
+          <td>${money(t.amount)}</td>
+          <td>${rules}</td>
+          <td>${when(f.flaggedAt)}</td>
+          <td>${badge(f.reviewStatus)}</td>
+          <td class="actions">${action}</td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="9" class="empty">Nothing here.</td></tr>';
+    }
+
+    $('#statusFilter').addEventListener('change', loadQueue);
+    $('#refreshQueue').addEventListener('click', loadAll);
+
+    $('#queueBody').addEventListener('click', async (e) => {
+      const id = e.target.dataset.review;
+      if (!id) return;
+      const reviewer = $('#reviewer').value.trim();
+      if (!reviewer) { toast('Enter your reviewer name first.', 'err'); $('#reviewer').focus(); return; }
+      const decision = e.target.dataset.decision;
+      const comment = prompt(`Optional comment for ${decision.toLowerCase()} decision:`, '');
+      if (comment === null) return;
+      try {
+        await api(`/api/flagged/${id}/review`, {
+          method: 'POST',
+          body: JSON.stringify({ decision, reviewer, comment: comment || null })
+        });
+        toast(`Flagged item #${id} ${decision.toLowerCase()}.`);
+        loadAll();
+      } catch (err) {
+        toast(err.message, 'err');
+        loadAll();
+      }
+    });
+
+    /* ---------- Dashboard ---------- */
+    async function loadDashboard() {
+      const rows = await api('/api/dashboard/flagged-by-rule');
+      const max = Math.max(1, ...rows.map((r) => r.flaggedCount));
+      $('#dashboard').innerHTML = rows.length ? rows.map((r) => `
+        <div>
+          <div class="bar-label"><span>${esc(r.ruleName)}</span><b>${r.flaggedCount}</b></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${(r.flaggedCount / max) * 100}%"></div></div>
+        </div>`).join('') : '<div class="empty">No flagged transactions yet.</div>';
+    }
+
+    /* ---------- Rules ---------- */
+    function describe(r) {
+      return r.type === 'AMOUNT_THRESHOLD'
+        ? `amount &gt; ${money(r.thresholdAmount)}`
+        : `more than ${r.maxCount} in ${r.windowSeconds}s`;
+    }
+
+    async function loadRules() {
+      rulesCache = await api('/api/rules');
+      $('#rulesBody').innerHTML = rulesCache.length ? rulesCache.map((r) => `
+        <tr>
+          <td>${esc(r.name)}</td>
+          <td>${esc(r.type.replace('_', ' '))}</td>
+          <td>${describe(r)}</td>
+          <td><span class="badge ${r.active ? 'COMPLETED' : 'off'}">${r.active ? 'Active' : 'Off'}</span></td>
+          <td class="actions"><button class="small ghost" data-edit="${r.id}">Edit</button></td>
+        </tr>`).join('') : '<tr><td colspan="5" class="empty">No rules configured.</td></tr>';
+    }
+
+    function syncRuleType() {
+      const velocity = $('#ruleType').value === 'VELOCITY';
+      $('#thresholdWrap').hidden = velocity;
+      $('#velocityWrap').hidden = !velocity;
+    }
+    $('#ruleType').addEventListener('change', syncRuleType);
+
+    function resetRuleForm() {
+      editingRuleId = null;
+      $('#ruleForm').reset();
+      $('#ruleFormTitle').textContent = 'Add Rule';
+      $('#ruleCancel').hidden = true;
+      syncRuleType();
+    }
+    $('#ruleCancel').addEventListener('click', resetRuleForm);
+
+    $('#rulesBody').addEventListener('click', (e) => {
+      const id = e.target.dataset.edit;
+      if (!id) return;
+      const r = rulesCache.find((x) => String(x.id) === id);
+      if (!r) return;
+      editingRuleId = r.id;
+      $('#ruleFormTitle').textContent = 'Edit Rule #' + r.id;
+      $('#ruleName').value = r.name;
+      $('#ruleType').value = r.type;
+      $('#ruleThreshold').value = r.thresholdAmount ?? '';
+      $('#ruleMax').value = r.maxCount ?? '';
+      $('#ruleWindow').value = r.windowSeconds ?? '';
+      $('#ruleActive').checked = r.active;
+      $('#ruleCancel').hidden = false;
+      syncRuleType();
+      $('#ruleName').focus();
+    });
+
+    $('#ruleForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const type = $('#ruleType').value;
+      const body = { name: $('#ruleName').value, type, active: $('#ruleActive').checked };
+      if (type === 'AMOUNT_THRESHOLD') {
+        body.thresholdAmount = $('#ruleThreshold').value;
+      } else {
+        body.maxCount = $('#ruleMax').value;
+        body.windowSeconds = $('#ruleWindow').value;
+      }
+      try {
+        const editing = editingRuleId !== null;
+        await api(editing ? `/api/rules/${editingRuleId}` : '/api/rules', {
+          method: editing ? 'PUT' : 'POST',
+          body: JSON.stringify(body)
+        });
+        toast(editing ? 'Rule updated.' : 'Rule created.');
+        resetRuleForm();
+        loadRules();
+      } catch (err) {
+        toast(err.message, 'err');
+      }
+    });
+
+    /* ---------- Init ---------- */
+    async function loadAll() {
+      try {
+        await Promise.all([loadTransactions(), loadQueue(), loadDashboard(), loadRules()]);
+      } catch (err) {
+        toast(err.message, 'err');
+      }
+    }
+
+    syncRuleType();
+    loadAll();
+  </script>
+</body>
+</html>
