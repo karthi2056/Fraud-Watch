@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User 1 Banking Portal - FraudWatch</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .portal-banner {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(30, 41, 66, 0.8));
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .user-avatar-tag {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .avatar-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #4338ca);
+      display: grid;
+      place-items: center;
+      font-size: 1.5rem;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-container">
+      <div class="logo-group">
+        <div class="logo-badge">👤</div>
+        <div class="brand-text">
+          <h1>User 1 Banking Portal</h1>
+          <p>Account Number: <b>1001</b> | Customer Portal</p>
+        </div>
+      </div>
+
+      <div class="role-bar">
+        <a href="user1.html" class="role-btn active" style="text-decoration:none;">
+          <span>👤 User 1 (Active)</span>
+        </a>
+        <a href="user2.html" class="role-btn" style="text-decoration:none;">
+          <span>👤 Switch to User 2</span>
+        </a>
+        <a href="admin.html" class="role-btn" style="text-decoration:none;">
+          <span>🛡️ Switch to Admin</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- User 1 Profile Banner -->
+    <div class="portal-banner">
+      <div class="user-avatar-tag">
+        <div class="avatar-circle">👤</div>
+        <div>
+          <h2 style="font-size: 1.35rem; color:#fff;">Welcome back, User 1</h2>
+          <p style="color: var(--text-muted); font-size: 0.88rem;">Primary Checking Account: <b style="color:#a5b4fc;">1001</b></p>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Available Balance</div>
+        <div id="u1Balance" style="font-size: 2rem; font-weight: 800; color: var(--ok);">$0.00</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Send Money Form -->
+      <section class="card span-5">
+        <div class="card-header">
+          <div class="card-title">
+            <span>💸</span>
+            <span>Send Money</span>
+          </div>
+          <span class="badge COMPLETED">Sender: 1001</span>
+        </div>
+
+        <form id="u1TxnForm">
+          <div class="form-group">
+            <label for="senderField">From (Your Account)</label>
+            <input id="senderField" type="text" value="1001 (User 1)" readonly
+              style="opacity: 0.9; background: rgba(0,0,0,0.3); font-weight:600;">
+          </div>
+
+          <div class="form-group">
+            <label for="u1ReceiverSelect">To Receiver</label>
+            <select id="u1ReceiverSelect" onchange="onReceiverChange()">
+              <option value="1002" selected>User 2 (Account 1002)</option>
+              <option value="custom">Other Account Number...</option>
+            </select>
+            <input id="u1ReceiverCustom" type="text" inputmode="numeric" pattern="[0-9]+"
+              oninput="validateReceiver(this.value)" placeholder="Enter receiver account number"
+              style="display: none; margin-top: 6px;">
+            <div id="selfTransferErr" style="color: var(--bad); font-size: 0.8rem; font-weight: 600; display: none; margin-top: 4px;">
+              ⚠️ User 1 cannot send money to User 1 (Account 1001).
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="u1Amount">Amount ($)</label>
+            <input id="u1Amount" type="number" step="0.01" min="0.01" required placeholder="e.g. 500.00 or 15000.00">
+            <div class="chips-row">
+              <span class="chip" onclick="setAmt(500)">$500 (Complies with Rule)</span>
+              <span class="chip" onclick="setAmt(5000)">$5,000 (Complies with Rule)</span>
+              <span class="chip" style="color:#fde68a;" onclick="setAmt(15000)">$15,000 (Flagged for Admin)</span>
+            </div>
+          </div>
+
+          <div class="rule-alert-hint">
+            <span>🛡️</span>
+            <span>Policy: Amounts exceeding <strong>$10,000.00</strong> will be submitted to the <strong>Admin</strong> for verification &amp; approval.</span>
+          </div>
+
+          <button type="submit" id="btnSubmitU1" style="margin-top: 8px;">
+            <span>Submit Payment</span> <span>➔</span>
+          </button>
+        </form>
+
+        <div id="u1Result" class="result"></div>
+      </section>
+
+      <!-- User 1 History -->
+      <section class="card span-7">
+        <div class="card-header">
+          <div class="card-title">
+            <span>📜</span>
+            <span>User 1 Transaction History</span>
+          </div>
+          <button class="ghost small" type="button" onclick="loadUser1Data()">Refresh</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Txn ID</th>
+                <th>Type</th>
+                <th>Counterparty</th>
+                <th>Amount</th>
+                <th>Time</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="u1HistoryBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const money = (n) => '$' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const when = (t) => (t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '');
+
+    function badge(s) {
+      const label = s === 'FLAGGED' ? 'PENDING ADMIN APPROVAL' : String(s).replace('_', ' ');
+      return `<span class="badge ${esc(s)}">${esc(label)}</span>`;
+    }
+
+    async function api(path, options) {
+      const opts = Object.assign({ headers: { 'Content-Type': 'application/json' } }, options);
+      const res = await fetch(path, opts);
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch (e) { }
+      if (!res.ok) {
+        const details = data && data.details && data.details.length ? ': ' + data.details.join('; ') : '';
+        throw new Error(((data && data.message) || res.statusText || 'Request failed') + details);
+      }
+      return data;
+    }
+
+    let toastTimer;
+    function toast(message, kind = 'ok') {
+      const t = $('#toast');
+      t.textContent = message;
+      t.className = 'show ' + kind;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.className = ''; }, 4000);
+    }
+
+    function onReceiverChange() {
+      const val = $('#u1ReceiverSelect').value;
+      const customInput = $('#u1ReceiverCustom');
+      if (val === 'custom') {
+        customInput.style.display = 'block';
+        customInput.focus();
+        validateReceiver(customInput.value);
+      } else {
+        customInput.style.display = 'none';
+        validateReceiver(val);
+      }
+    }
+
+    function validateReceiver(val) {
+      const cleanVal = String(val || '').trim();
+      const errEl = $('#selfTransferErr');
+      const submitBtn = $('#btnSubmitU1');
+      if (cleanVal === '1001') {
+        errEl.style.display = 'block';
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.cursor = 'not-allowed';
+      } else {
+        errEl.style.display = 'none';
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+      }
+    }
+
+    function setAmt(val) {
+      $('#u1Amount').value = val;
+    }
+
+    async function loadUser1Data() {
+      try {
+        const users = await api('/api/users');
+        const u1 = users.find(u => u.username === 'user1' || u.accountNumber === '1001');
+        if (u1) {
+          $('#u1Balance').textContent = money(u1.balance);
+        }
+
+        const txns = await api('/api/transactions');
+        const u1Txns = txns.filter(t => t.senderAccount === '1001' || t.receiverAccount === '1001');
+        
+        $('#u1HistoryBody').innerHTML = u1Txns.length ? u1Txns.map(t => {
+          const isSender = t.senderAccount === '1001';
+          const type = isSender ? '<span style="color:#f87171;">Outgoing</span>' : '<span style="color:#34d399;">Incoming</span>';
+          const counterparty = isSender ? ('To: ' + (t.receiverAccount === '1002' ? 'User 2 (1002)' : t.receiverAccount))
+                                        : ('From: ' + (t.senderAccount === '1002' ? 'User 2 (1002)' : t.senderAccount));
+          return `<tr>
+            <td>#${t.id}</td>
+            <td>${type}</td>
+            <td>${esc(counterparty)}</td>
+            <td><b>${isSender ? '-' : '+'}${money(t.amount)}</b></td>
+            <td>${when(t.timestamp)}</td>
+            <td>${badge(t.status)}</td>
+          </tr>`;
+        }).join('') : '<tr><td colspan="6" class="empty">No transactions recorded for User 1.</td></tr>';
+      } catch (err) {
+        console.error('Error loading User 1 data:', err);
+      }
+    }
+
+    $('#u1TxnForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const selVal = $('#u1ReceiverSelect').value;
+      const receiverAccount = selVal === 'custom' ? $('#u1ReceiverCustom').value.trim() : selVal;
+      const amount = $('#u1Amount').value;
+      const box = $('#u1Result');
+
+      if (receiverAccount === '1001') {
+        toast('User 1 cannot send money to User 1', 'err');
+        return;
+      }
+
+      try {
+        const res = await api('/api/transactions', {
+          method: 'POST',
+          body: JSON.stringify({
+            senderAccount: '1001',
+            receiverAccount,
+            amount
+          })
+        });
+
+        if (res.status === 'FLAGGED') {
+          box.className = 'result show warn';
+          box.innerHTML = `⚠️ <b>Transaction #${res.id} Flagged!</b><br>
+            Amount of <b>${money(res.amount)}</b> exceeds rules and has been sent to <b>Admin</b> for review &amp; verification.<br>
+            <a href="admin.html" style="color:#fde68a; font-weight:600; text-decoration:underline;">Click here to switch to Admin UI to verify &amp; approve</a>`;
+          toast(`Transfer of ${money(amount)} sent to Admin for approval.`, 'err');
+        } else {
+          box.className = 'result show ok';
+          box.innerHTML = `✅ <b>Payment Completed!</b><br>
+            Sent <b>${money(res.amount)}</b> to account <b>${esc(receiverAccount)}</b> immediately.`;
+          toast(`Transfer of ${money(amount)} completed!`);
+        }
+        $('#u1Amount').value = '';
+        await loadUser1Data();
+      } catch (err) {
+        box.className = 'result';
+        toast(err.message, 'err');
+      }
+    });
+
+    loadUser1Data();
+  </script>
+</body>
+
+</html>

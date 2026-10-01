@@ -3,6 +3,7 @@ package com.fraudwatch.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
@@ -20,10 +21,12 @@ public class Transaction {
     private Long id;
 
     @NotBlank(message = "senderAccount is required")
+    @Pattern(regexp = "^\\d+$", message = "senderAccount must contain only numbers")
     @Column(name = "sender_account", nullable = false, length = 64)
     private String senderAccount;
 
     @NotBlank(message = "receiverAccount is required")
+    @Pattern(regexp = "^\\d+$", message = "receiverAccount must contain only numbers")
     @Column(name = "receiver_account", nullable = false, length = 64)
     private String receiverAccount;
 

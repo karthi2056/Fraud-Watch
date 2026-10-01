@@ -1,103 +1,541 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FraudWatch</title>
+  <title>FraudWatch - Multi-Portal System</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .portal-nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding: 12px 18px;
+      background: rgba(17, 24, 39, 0.7);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+    }
+    .portal-tabs {
+      display: flex;
+      gap: 8px;
+    }
+    .portal-tab-btn {
+      padding: 9px 20px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .portal-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+    .portal-tab-btn.active-u1 {
+      background: #6366f1;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+    .portal-tab-btn.active-u2 {
+      background: #10b981;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+    }
+    .portal-tab-btn.active-admin {
+      background: #f59e0b;
+      color: #000;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+    }
+
+    .open-links {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .open-link-chip {
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      text-decoration: none;
+      padding: 4px 10px;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s;
+    }
+    .open-link-chip:hover {
+      color: #fff;
+      border-color: rgba(255,255,255,0.3);
+    }
+
+    .view-container {
+      display: none;
+      animation: fadeIn 0.25s ease;
+    }
+    .view-container.active-view {
+      display: block;
+    }
+
+    .user-hero {
+      background: linear-gradient(135deg, rgba(30, 41, 66, 0.8), rgba(17, 24, 39, 0.9));
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 22px 26px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .user-hero-avatar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .hero-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 1.4rem;
+    }
+  </style>
 </head>
+
 <body>
+  <!-- Header -->
   <header>
-    <h1>FraudWatch</h1>
-    <p>Transaction anomaly flagging and manual review</p>
+    <div class="header-container">
+      <div class="logo-group">
+        <div class="logo-badge">🛡️</div>
+        <div class="brand-text">
+          <h1>FraudWatch Core Banking &amp; Review System</h1>
+          <p>Multi-Role Isolation: User 1, User 2, and Admin Portals</p>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button type="button" class="ghost small" onclick="resetDemo()">
+          <span>🔄 Reset Demo Balances</span>
+        </button>
+      </div>
+    </div>
   </header>
 
   <main>
-    <!-- New transaction -->
-    <section class="card span-4">
-      <h2>New Transaction</h2>
-      <form id="txnForm">
-        <label>Sender account <input id="txnSender" required placeholder="ACC-1"></label>
-        <label>Receiver account <input id="txnReceiver" required placeholder="ACC-2"></label>
-        <label>Amount <input id="txnAmount" type="number" step="0.01" min="0" required placeholder="15000"></label>
-        <button type="submit">Submit transaction</button>
-      </form>
-      <div id="txnResult" class="result"></div>
-    </section>
-
-    <!-- Dashboard -->
-    <section class="card span-8">
-      <h2>Dashboard: flagged transactions by rule</h2>
-      <div id="dashboard" class="bars"></div>
-    </section>
-
-    <!-- Review queue -->
-    <section class="card span-12">
-      <h2>Review Queue</h2>
-      <div class="toolbar">
-        <label class="grow">Reviewer name <input id="reviewer" placeholder="Your name"></label>
-        <label>Status
-          <select id="statusFilter">
-            <option value="PENDING_REVIEW">Pending review</option>
-            <option value="APPROVED">Approved</option>
-            <option value="BLOCKED">Blocked</option>
-            <option value="">All</option>
-          </select>
-        </label>
-        <button class="ghost" id="refreshQueue" type="button">Refresh</button>
+    <!-- Multi-Portal Switcher -->
+    <div class="portal-nav-bar">
+      <div class="portal-tabs">
+        <button class="portal-tab-btn active-u1" id="tabBtnU1" type="button" onclick="showPortal('user1')">
+          <span>👤 User 1 Portal</span>
+        </button>
+        <button class="portal-tab-btn" id="tabBtnU2" type="button" onclick="showPortal('user2')">
+          <span>👤 User 2 Portal</span>
+        </button>
+        <button class="portal-tab-btn" id="tabBtnAdmin" type="button" onclick="showPortal('admin')">
+          <span>🛡️ Admin Portal</span>
+          <span class="role-badge-count" id="adminHeaderBadge" style="display:none;">0</span>
+        </button>
       </div>
-      <div class="table-wrap"><table>
-        <thead><tr>
-          <th>ID</th><th>Txn</th><th>Sender</th><th>Receiver</th><th>Amount</th>
-          <th>Triggered rules</th><th>Flagged at</th><th>Status</th><th>Action</th>
-        </tr></thead>
-        <tbody id="queueBody"></tbody>
-      </table></div>
-    </section>
 
-    <!-- Rules -->
-    <section class="card span-7">
-      <h2>Rules</h2>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Name</th><th>Type</th><th>Condition</th><th>State</th><th></th></tr></thead>
-        <tbody id="rulesBody"></tbody>
-      </table></div>
-    </section>
+      <div class="open-links">
+        <span style="font-size:0.75rem; color:var(--text-dim);">Open standalone page:</span>
+        <a href="user1.html" target="_blank" class="open-link-chip">↗ user1.html</a>
+        <a href="user2.html" target="_blank" class="open-link-chip">↗ user2.html</a>
+        <a href="admin.html" target="_blank" class="open-link-chip">↗ admin.html</a>
+      </div>
+    </div>
 
-    <section class="card span-5">
-      <h2 id="ruleFormTitle">Add Rule</h2>
-      <form id="ruleForm">
-        <label>Name <input id="ruleName" required></label>
-        <label>Type
-          <select id="ruleType">
-            <option value="AMOUNT_THRESHOLD">Amount threshold</option>
-            <option value="VELOCITY">Velocity (repeated transfers)</option>
-          </select>
-        </label>
-        <label id="thresholdWrap">Flag amounts above <input id="ruleThreshold" type="number" step="0.01" min="0"></label>
-        <div id="velocityWrap" class="row" hidden>
-          <label>More than N transactions <input id="ruleMax" type="number" min="1"></label>
-          <label>Within (seconds) <input id="ruleWindow" type="number" min="1"></label>
+    <!-- ========================================== -->
+    <!-- VIEW 1: USER 1 PORTAL                      -->
+    <!-- ========================================== -->
+    <div id="viewUser1" class="view-container active-view">
+      <div class="user-hero" style="border-color: rgba(99, 102, 241, 0.4);">
+        <div class="user-hero-avatar">
+          <div class="hero-circle" style="background: linear-gradient(135deg, #6366f1, #4338ca);">👤</div>
+          <div>
+            <h2 style="font-size: 1.3rem; color: #fff;">User 1 Portal</h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem;">Account Number: <b style="color:#a5b4fc;">1001</b></p>
+          </div>
         </div>
-        <label class="checkbox"><input id="ruleActive" type="checkbox" checked> Active</label>
-        <div class="row">
-          <button type="submit" id="ruleSubmit">Save rule</button>
-          <button type="button" class="ghost" id="ruleCancel" hidden>Cancel edit</button>
+        <div style="text-align: right;">
+          <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Current Balance</div>
+          <div id="u1BalDisplay" style="font-size: 1.85rem; font-weight: 800; color: var(--ok);">$0.00</div>
         </div>
-      </form>
-    </section>
+      </div>
 
-    <!-- Transactions -->
-    <section class="card span-12">
-      <h2>All Transactions</h2>
-      <div class="table-wrap"><table>
-        <thead><tr>
-          <th>ID</th><th>Sender</th><th>Receiver</th><th>Amount</th><th>Time</th><th>Status</th><th></th>
-        </tr></thead>
-        <tbody id="txnBody"></tbody>
-      </table></div>
-    </section>
+      <div class="grid">
+        <!-- Send Money Card for User 1 -->
+        <section class="card span-5">
+          <div class="card-header">
+            <div class="card-title">
+              <span>💸</span>
+              <span>Send Money (User 1)</span>
+            </div>
+            <span class="badge" style="background: rgba(99, 102, 241, 0.2); color:#a5b4fc;">Sender: 1001</span>
+          </div>
+
+          <form id="formUser1">
+            <div class="form-group">
+              <label for="u1SenderField">Sender Account</label>
+              <input id="u1SenderField" type="text" value="1001 (User 1)" readonly
+                style="background: rgba(0,0,0,0.3); opacity: 0.9; font-weight:600;">
+            </div>
+
+            <div class="form-group">
+              <label for="u1ReceiverSelect">Receiver Account</label>
+              <select id="u1ReceiverSelect" onchange="onU1ReceiverSelectChange()">
+                <option value="1002" selected>User 2 (Account 1002)</option>
+                <option value="custom">Other Account Number...</option>
+              </select>
+              <input id="u1ReceiverCustom" type="text" inputmode="numeric" pattern="[0-9]+"
+                placeholder="Enter receiver account" oninput="validateU1Receiver(this.value)"
+                style="display:none; margin-top:6px;">
+              <div id="u1SelfError" style="color: var(--bad); font-size: 0.8rem; font-weight: 600; display: none; margin-top: 4px;">
+                ⚠️ User 1 cannot send money to User 1 (Account 1001).
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="u1AmountInput">Amount ($)</label>
+              <input id="u1AmountInput" type="number" step="0.01" min="0.01" required placeholder="e.g. 500.00 or 15000.00">
+              <div class="chips-row">
+                <span class="chip" onclick="setU1Amt(500)">$500 (Complies with Rule)</span>
+                <span class="chip" onclick="setU1Amt(5000)">$5,000 (Complies with Rule)</span>
+                <span class="chip" style="color:#fde68a;" onclick="setU1Amt(15000)">$15,000 (Sends to Admin)</span>
+              </div>
+            </div>
+
+            <div class="rule-alert-hint">
+              <span>🛡️</span>
+              <span>Policy: Amounts above <strong>$10,000.00</strong> will be held for <strong>Admin verification &amp; approval</strong>.</span>
+            </div>
+
+            <button type="submit" id="btnSubmitU1" style="margin-top: 6px;">
+              <span>Transfer Money</span> <span>➔</span>
+            </button>
+          </form>
+
+          <div id="resultU1" class="result"></div>
+        </section>
+
+        <!-- User 1 Ledger -->
+        <section class="card span-7">
+          <div class="card-header">
+            <div class="card-title">
+              <span>📜</span>
+              <span>User 1 Transaction History</span>
+            </div>
+            <button class="ghost small" type="button" onclick="loadAll()">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Txn ID</th>
+                  <th>Direction</th>
+                  <th>Counterparty</th>
+                  <th>Amount</th>
+                  <th>Timestamp</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="u1TxnTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: USER 2 PORTAL                      -->
+    <!-- ========================================== -->
+    <div id="viewUser2" class="view-container">
+      <div class="user-hero" style="border-color: rgba(16, 185, 129, 0.4);">
+        <div class="user-hero-avatar">
+          <div class="hero-circle" style="background: linear-gradient(135deg, #10b981, #059669);">👤</div>
+          <div>
+            <h2 style="font-size: 1.3rem; color: #fff;">User 2 Portal</h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem;">Account Number: <b style="color:#6ee7b7;">1002</b></p>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em;">Current Balance</div>
+          <div id="u2BalDisplay" style="font-size: 1.85rem; font-weight: 800; color: var(--ok);">$0.00</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Send Money Card for User 2 -->
+        <section class="card span-5">
+          <div class="card-header">
+            <div class="card-title">
+              <span>💸</span>
+              <span>Send Money (User 2)</span>
+            </div>
+            <span class="badge" style="background: rgba(16, 185, 129, 0.2); color:#6ee7b7;">Sender: 1002</span>
+          </div>
+
+          <form id="formUser2">
+            <div class="form-group">
+              <label for="u2SenderField">Sender Account</label>
+              <input id="u2SenderField" type="text" value="1002 (User 2)" readonly
+                style="background: rgba(0,0,0,0.3); opacity: 0.9; font-weight:600;">
+            </div>
+
+            <div class="form-group">
+              <label for="u2ReceiverSelect">Receiver Account</label>
+              <select id="u2ReceiverSelect" onchange="onU2ReceiverSelectChange()">
+                <option value="1001" selected>User 1 (Account 1001)</option>
+                <option value="custom">Other Account Number...</option>
+              </select>
+              <input id="u2ReceiverCustom" type="text" inputmode="numeric" pattern="[0-9]+"
+                placeholder="Enter receiver account" oninput="validateU2Receiver(this.value)"
+                style="display:none; margin-top:6px;">
+              <div id="u2SelfError" style="color: var(--bad); font-size: 0.8rem; font-weight: 600; display: none; margin-top: 4px;">
+                ⚠️ User 2 cannot send money to User 2 (Account 1002).
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="u2AmountInput">Amount ($)</label>
+              <input id="u2AmountInput" type="number" step="0.01" min="0.01" required placeholder="e.g. 500.00 or 12000.00">
+              <div class="chips-row">
+                <span class="chip" onclick="setU2Amt(500)">$500 (Complies with Rule)</span>
+                <span class="chip" onclick="setU2Amt(3000)">$3,000 (Complies with Rule)</span>
+                <span class="chip" style="color:#fde68a;" onclick="setU2Amt(12000)">$12,000 (Sends to Admin)</span>
+              </div>
+            </div>
+
+            <div class="rule-alert-hint">
+              <span>🛡️</span>
+              <span>Policy: Amounts above <strong>$10,000.00</strong> will be held for <strong>Admin verification &amp; approval</strong>.</span>
+            </div>
+
+            <button type="submit" id="btnSubmitU2" style="margin-top: 6px; background: #10b981;">
+              <span>Transfer Money</span> <span>➔</span>
+            </button>
+          </form>
+
+          <div id="resultU2" class="result"></div>
+        </section>
+
+        <!-- User 2 Ledger -->
+        <section class="card span-7">
+          <div class="card-header">
+            <div class="card-title">
+              <span>📜</span>
+              <span>User 2 Transaction History</span>
+            </div>
+            <button class="ghost small" type="button" onclick="loadAll()">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Txn ID</th>
+                  <th>Direction</th>
+                  <th>Counterparty</th>
+                  <th>Amount</th>
+                  <th>Timestamp</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="u2TxnTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 3: ADMIN PORTAL                       -->
+    <!-- ========================================== -->
+    <div id="viewAdmin" class="view-container">
+      <div class="user-hero" style="border-color: rgba(245, 158, 11, 0.4);">
+        <div class="user-hero-avatar">
+          <div class="hero-circle" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🛡️</div>
+          <div>
+            <h2 style="font-size: 1.3rem; color: #fff;">FraudWatch Admin Console</h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem;">Supervisor &amp; Anomaly Review Queue Terminal</p>
+          </div>
+        </div>
+        <div style="display:flex; gap:16px; align-items:center;">
+          <div style="text-align: right; background: rgba(0,0,0,0.3); padding: 8px 14px; border-radius: var(--radius-md);">
+            <div style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">User 1 Bal</div>
+            <div id="adminU1Bal" style="font-size: 1.1rem; font-weight:700; color:var(--ok);">$0.00</div>
+          </div>
+          <div style="text-align: right; background: rgba(0,0,0,0.3); padding: 8px 14px; border-radius: var(--radius-md);">
+            <div style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">User 2 Bal</div>
+            <div id="adminU2Bal" style="font-size: 1.1rem; font-weight:700; color:var(--ok);">$0.00</div>
+          </div>
+          <div style="text-align: right; background: rgba(0,0,0,0.3); padding: 8px 14px; border-radius: var(--radius-md);">
+            <div style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">Pending Reviews</div>
+            <div id="adminPendingNum" style="font-size: 1.1rem; font-weight:700; color:var(--warn);">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Review Queue -->
+        <section class="card span-12">
+          <div class="card-header">
+            <div class="card-title">
+              <span>📋</span>
+              <span>Flagged Transfers Awaiting Admin Verification &amp; Approval</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <select id="adminStatusFilter" style="width:auto; padding:5px 10px; font-size:0.8rem;" onchange="loadAdminQueue()">
+                <option value="PENDING_REVIEW">Pending Review</option>
+                <option value="APPROVED">Approved</option>
+                <option value="BLOCKED">Blocked</option>
+                <option value="">All</option>
+              </select>
+              <button class="ghost small" type="button" onclick="loadAll()">Refresh</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Queue ID</th>
+                  <th>Txn ID</th>
+                  <th>Sender</th>
+                  <th>Receiver</th>
+                  <th>Amount</th>
+                  <th>Triggered Rule</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                  <th>Verification Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminQueueBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Rules & Metrics -->
+        <section class="card span-6">
+          <div class="card-header">
+            <div class="card-title">
+              <span>⚙️</span>
+              <span>Active Anomaly Rules</span>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rule Name</th>
+                  <th>Condition</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="adminRulesBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="card span-6">
+          <div class="card-header">
+            <div class="card-title">
+              <span>📈</span>
+              <span>Flagged Incidents Breakdown</span>
+            </div>
+          </div>
+          <div id="adminDashboard" class="bars"></div>
+        </section>
+
+        <!-- Master Transaction Ledger -->
+        <section class="card span-12">
+          <div class="card-header">
+            <div class="card-title">
+              <span>📊</span>
+              <span>Complete System Ledger</span>
+            </div>
+            <button class="ghost small" onclick="loadAll()">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Txn ID</th>
+                  <th>Sender</th>
+                  <th>Receiver</th>
+                  <th>Amount</th>
+                  <th>Timestamp</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="masterTxnBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
   </main>
+
+  <!-- Admin Verification Modal -->
+  <div class="modal-overlay" id="reviewModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>🛡️ Admin Verification &amp; Authorization</h3>
+        <button class="ghost small" type="button" onclick="closeModal()">✕</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <div class="detail-row">
+          <span class="detail-label">Queue Item:</span>
+          <span class="detail-value" id="modalQueueId">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Transaction ID:</span>
+          <span class="detail-value" id="modalTxnId">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Sender Account:</span>
+          <span class="detail-value" id="modalSender">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Receiver Account:</span>
+          <span class="detail-value" id="modalReceiver">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Amount:</span>
+          <span class="detail-value" style="color: #38bdf8; font-size: 1.1rem;" id="modalAmount">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Triggered Anomaly:</span>
+          <span class="detail-value" id="modalRule">-</span>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label for="reviewComment">Reviewer Note / Justification</label>
+        <input id="reviewComment" value="Identity and transaction verified by Admin">
+      </div>
+
+      <div style="display:flex; gap:12px; justify-content: flex-end;">
+        <button type="button" class="block" onclick="submitDecision('BLOCKED')">
+          <span>❌ Block / Reject</span>
+        </button>
+        <button type="button" class="approve" onclick="submitDecision('APPROVED')">
+          <span>✅ Verify &amp; Approve</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <div id="toast"></div>
 
@@ -105,19 +543,24 @@
     const $ = (s) => document.querySelector(s);
     const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => (
       { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const money = (n) => Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const when = (t) => (t ? new Date(t).toLocaleString() : '');
-    const badge = (s) => `<span class="badge ${esc(s)}">${esc(String(s).replace('_', ' '))}</span>`;
+    const money = (n) => '$' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const when = (t) => (t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '');
 
-    let rulesCache = [];
-    let editingRuleId = null;
+    function badge(s) {
+      const label = s === 'FLAGGED' ? 'PENDING ADMIN APPROVAL' : String(s).replace('_', ' ');
+      return `<span class="badge ${esc(s)}">${esc(label)}</span>`;
+    }
+
+    let activePortal = 'user1';
+    let pendingReviews = [];
+    let activeModalItem = null;
 
     async function api(path, options) {
       const opts = Object.assign({ headers: { 'Content-Type': 'application/json' } }, options);
       const res = await fetch(path, opts);
       const text = await res.text();
       let data = null;
-      try { data = text ? JSON.parse(text) : null; } catch (e) { /* not JSON */ }
+      try { data = text ? JSON.parse(text) : null; } catch (e) { }
       if (!res.ok) {
         const details = data && data.details && data.details.length ? ': ' + data.details.join('; ') : '';
         throw new Error(((data && data.message) || res.statusText || 'Request failed') + details);
@@ -126,219 +569,386 @@
     }
 
     let toastTimer;
-    function toast(message, kind) {
+    function toast(message, kind = 'ok') {
       const t = $('#toast');
       t.textContent = message;
-      t.className = 'show ' + (kind || 'ok');
+      t.className = 'show ' + kind;
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => { t.className = ''; }, 3500);
+      toastTimer = setTimeout(() => { t.className = ''; }, 4000);
     }
 
-    /* ---------- Transactions ---------- */
-    $('#txnForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const box = $('#txnResult');
+    /* ---------- Portal Switching (User 1, User 2, Admin) ---------- */
+    function showPortal(portalKey) {
+      activePortal = portalKey;
+      $('#tabBtnU1').classList.toggle('active-u1', portalKey === 'user1');
+      $('#tabBtnU2').classList.toggle('active-u2', portalKey === 'user2');
+      $('#tabBtnAdmin').classList.toggle('active-admin', portalKey === 'admin');
+
+      $('#viewUser1').classList.toggle('active-view', portalKey === 'user1');
+      $('#viewUser2').classList.toggle('active-view', portalKey === 'user2');
+      $('#viewAdmin').classList.toggle('active-view', portalKey === 'admin');
+
+      loadAll();
+    }
+
+    /* ---------- User 1 Receiver Validation ---------- */
+    function onU1ReceiverSelectChange() {
+      const val = $('#u1ReceiverSelect').value;
+      const customEl = $('#u1ReceiverCustom');
+      if (val === 'custom') {
+        customEl.style.display = 'block';
+        customEl.focus();
+        validateU1Receiver(customEl.value);
+      } else {
+        customEl.style.display = 'none';
+        validateU1Receiver(val);
+      }
+    }
+
+    function validateU1Receiver(val) {
+      const clean = String(val || '').trim();
+      const errEl = $('#u1SelfError');
+      const submitBtn = $('#btnSubmitU1');
+      if (clean === '1001') {
+        errEl.style.display = 'block';
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.cursor = 'not-allowed';
+      } else {
+        errEl.style.display = 'none';
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+      }
+    }
+
+    function setU1Amt(amt) {
+      $('#u1AmountInput').value = amt;
+    }
+
+    /* ---------- User 2 Receiver Validation ---------- */
+    function onU2ReceiverSelectChange() {
+      const val = $('#u2ReceiverSelect').value;
+      const customEl = $('#u2ReceiverCustom');
+      if (val === 'custom') {
+        customEl.style.display = 'block';
+        customEl.focus();
+        validateU2Receiver(customEl.value);
+      } else {
+        customEl.style.display = 'none';
+        validateU2Receiver(val);
+      }
+    }
+
+    function validateU2Receiver(val) {
+      const clean = String(val || '').trim();
+      const errEl = $('#u2SelfError');
+      const submitBtn = $('#btnSubmitU2');
+      if (clean === '1002') {
+        errEl.style.display = 'block';
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.cursor = 'not-allowed';
+      } else {
+        errEl.style.display = 'none';
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+      }
+    }
+
+    function setU2Amt(amt) {
+      $('#u2AmountInput').value = amt;
+    }
+
+    /* ---------- Reset Demo Balances ---------- */
+    async function resetDemo() {
       try {
-        const t = await api('/api/transactions', {
+        await api('/api/users/reset', { method: 'POST' });
+        toast('Demo balances reset: User 1 = $50,000.00, User 2 = $10,000.00');
+        await loadAll();
+      } catch (err) {
+        toast(err.message, 'err');
+      }
+    }
+
+    /* ---------- User 1 Form Submission ---------- */
+    $('#formUser1').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const sel = $('#u1ReceiverSelect').value;
+      const receiverAccount = sel === 'custom' ? $('#u1ReceiverCustom').value.trim() : sel;
+      const amount = $('#u1AmountInput').value;
+      const box = $('#resultU1');
+
+      if (receiverAccount === '1001') {
+        toast('User 1 cannot send money to User 1', 'err');
+        return;
+      }
+
+      try {
+        const res = await api('/api/transactions', {
           method: 'POST',
-          body: JSON.stringify({
-            senderAccount: $('#txnSender').value,
-            receiverAccount: $('#txnReceiver').value,
-            amount: $('#txnAmount').value
-          })
+          body: JSON.stringify({ senderAccount: '1001', receiverAccount, amount })
         });
-        if (t.status === 'FLAGGED') {
+
+        if (res.status === 'FLAGGED') {
           box.className = 'result show warn';
-          box.innerHTML = `Transaction #${t.id} was <b>flagged</b> and sent for review.<br>Triggered: `
-            + (t.triggeredRules || []).map((r) => `<span class="badge rule">${esc(r)}</span>`).join('');
+          box.innerHTML = `⚠️ <b>Transaction #${res.id} Held For Review!</b><br>
+            Amount of <b>${money(res.amount)}</b> exceeds rules and has been sent to <b>Admin</b> for verification &amp; approval.<br>
+            <button type="button" class="small ghost" style="margin-top:8px;" onclick="showPortal('admin')">
+              👉 Go to Admin Portal to Verify &amp; Approve
+            </button>`;
+          toast(`Transfer of ${money(amount)} flagged! Sent to Admin for review.`, 'err');
         } else {
           box.className = 'result show ok';
-          box.innerHTML = `Transaction #${t.id} passed all rules and is <b>completed</b>.`;
+          box.innerHTML = `✅ <b>Payment Completed!</b><br>
+            Transferred <b>${money(res.amount)}</b> to account <b>${esc(receiverAccount)}</b> immediately.`;
+          toast(`Transfer of ${money(amount)} completed!`);
         }
-        $('#txnForm').reset();
-        loadAll();
+        $('#u1AmountInput').value = '';
+        await loadAll();
       } catch (err) {
         box.className = 'result';
         toast(err.message, 'err');
       }
     });
 
-    async function loadTransactions() {
-      const list = await api('/api/transactions');
-      $('#txnBody').innerHTML = list.length ? list.map((t) => `
-        <tr>
-          <td>#${t.id}</td>
-          <td>${esc(t.senderAccount)}</td>
-          <td>${esc(t.receiverAccount)}</td>
-          <td>${money(t.amount)}</td>
-          <td>${when(t.timestamp)}</td>
-          <td>${badge(t.status)}</td>
-          <td class="actions"><button class="small ghost" data-complete="${t.id}">Complete</button></td>
-        </tr>`).join('') : '<tr><td colspan="7" class="empty">No transactions yet.</td></tr>';
-    }
+    /* ---------- User 2 Form Submission ---------- */
+    $('#formUser2').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const sel = $('#u2ReceiverSelect').value;
+      const receiverAccount = sel === 'custom' ? $('#u2ReceiverCustom').value.trim() : sel;
+      const amount = $('#u2AmountInput').value;
+      const box = $('#resultU2');
 
-    $('#txnBody').addEventListener('click', async (e) => {
-      const id = e.target.dataset.complete;
-      if (!id) return;
+      if (receiverAccount === '1002') {
+        toast('User 2 cannot send money to User 2', 'err');
+        return;
+      }
+
       try {
-        await api(`/api/transactions/${id}/complete`, { method: 'POST' });
-        toast(`Transaction #${id} is completed.`);
+        const res = await api('/api/transactions', {
+          method: 'POST',
+          body: JSON.stringify({ senderAccount: '1002', receiverAccount, amount })
+        });
+
+        if (res.status === 'FLAGGED') {
+          box.className = 'result show warn';
+          box.innerHTML = `⚠️ <b>Transaction #${res.id} Held For Review!</b><br>
+            Amount of <b>${money(res.amount)}</b> exceeds rules and has been sent to <b>Admin</b> for verification &amp; approval.<br>
+            <button type="button" class="small ghost" style="margin-top:8px;" onclick="showPortal('admin')">
+              👉 Go to Admin Portal to Verify &amp; Approve
+            </button>`;
+          toast(`Transfer of ${money(amount)} flagged! Sent to Admin for review.`, 'err');
+        } else {
+          box.className = 'result show ok';
+          box.innerHTML = `✅ <b>Payment Completed!</b><br>
+            Transferred <b>${money(res.amount)}</b> to account <b>${esc(receiverAccount)}</b> immediately.`;
+          toast(`Transfer of ${money(amount)} completed!`);
+        }
+        $('#u2AmountInput').value = '';
+        await loadAll();
       } catch (err) {
+        box.className = 'result';
         toast(err.message, 'err');
       }
     });
 
-    /* ---------- Review queue ---------- */
-    async function loadQueue() {
-      const status = $('#statusFilter').value;
+    /* ---------- Admin Review Queue ---------- */
+    async function loadAdminQueue() {
+      const status = $('#adminStatusFilter').value;
       const qs = new URLSearchParams({ size: 50 });
       if (status) qs.set('status', status);
-      const page = await api('/api/flagged?' + qs.toString());
-      const rows = page.content || [];
-      $('#queueBody').innerHTML = rows.length ? rows.map((f) => {
-        const t = f.transaction || {};
-        const rules = (f.rules || []).map((r) => `<span class="badge rule">${esc(r.name)}</span>`).join('');
-        const action = f.reviewStatus === 'PENDING_REVIEW'
-          ? `<button class="small approve" data-review="${f.id}" data-decision="APPROVED">Approve</button>
-             <button class="small block" data-review="${f.id}" data-decision="BLOCKED">Block</button>`
-          : (f.reviewOutcome ? `<span title="${esc(f.reviewOutcome.comment || '')}">by ${esc(f.reviewOutcome.reviewer)}</span>` : '');
-        return `<tr>
-          <td>#${f.id}</td>
-          <td>#${t.id}</td>
-          <td>${esc(t.senderAccount)}</td>
-          <td>${esc(t.receiverAccount)}</td>
-          <td>${money(t.amount)}</td>
-          <td>${rules}</td>
-          <td>${when(f.flaggedAt)}</td>
-          <td>${badge(f.reviewStatus)}</td>
-          <td class="actions">${action}</td>
-        </tr>`;
-      }).join('') : '<tr><td colspan="9" class="empty">Nothing here.</td></tr>';
+
+      try {
+        const page = await api('/api/flagged?' + qs.toString());
+        pendingReviews = page.content || [];
+
+        const pendingCount = pendingReviews.filter(r => r.reviewStatus === 'PENDING_REVIEW').length;
+        $('#adminPendingNum').textContent = pendingCount;
+        const headerBadge = $('#adminHeaderBadge');
+        if (pendingCount > 0) {
+          headerBadge.textContent = pendingCount;
+          headerBadge.style.display = 'inline-block';
+        } else {
+          headerBadge.style.display = 'none';
+        }
+
+        $('#adminQueueBody').innerHTML = pendingReviews.length ? pendingReviews.map(f => {
+          const t = f.transaction || {};
+          const rules = (f.rules || []).map(r => `<span class="badge rule">${esc(r.name)}</span>`).join(' ');
+          const senderLabel = t.senderAccount === '1001' ? 'User 1 (1001)' : t.senderAccount;
+          const receiverLabel = t.receiverAccount === '1002' ? 'User 2 (1002)' : t.receiverAccount;
+
+          const action = f.reviewStatus === 'PENDING_REVIEW'
+            ? `<button class="small approve" onclick="openReviewModal(${f.id})">Verify &amp; Approve</button>
+               <button class="small block" onclick="quickBlock(${f.id})">Block</button>`
+            : (f.reviewOutcome ? `<span style="font-size:0.75rem; color:var(--text-muted);" title="${esc(f.reviewOutcome.comment || '')}">Reviewed by <b>${esc(f.reviewOutcome.reviewer)}</b></span>` : '-');
+
+          return `<tr>
+            <td>#${f.id}</td>
+            <td>#${t.id}</td>
+            <td><b>${esc(senderLabel)}</b></td>
+            <td><b>${esc(receiverLabel)}</b></td>
+            <td><b style="color:#38bdf8;">${money(t.amount)}</b></td>
+            <td>${rules}</td>
+            <td>${when(f.flaggedAt)}</td>
+            <td>${badge(f.reviewStatus)}</td>
+            <td class="actions">${action}</td>
+          </tr>`;
+        }).join('') : '<tr><td colspan="9" class="empty">No review requests in queue.</td></tr>';
+      } catch (err) {
+        console.error(err);
+      }
     }
 
-    $('#statusFilter').addEventListener('change', loadQueue);
-    $('#refreshQueue').addEventListener('click', loadAll);
+    function openReviewModal(id) {
+      const item = pendingReviews.find(x => x.id === id);
+      if (!item) return;
+      activeModalItem = item;
+      const t = item.transaction || {};
 
-    $('#queueBody').addEventListener('click', async (e) => {
-      const id = e.target.dataset.review;
-      if (!id) return;
-      const reviewer = $('#reviewer').value.trim();
-      if (!reviewer) { toast('Enter your reviewer name first.', 'err'); $('#reviewer').focus(); return; }
-      const decision = e.target.dataset.decision;
-      const comment = prompt(`Optional comment for ${decision.toLowerCase()} decision:`, '');
-      if (comment === null) return;
+      $('#modalQueueId').textContent = '#' + item.id;
+      $('#modalTxnId').textContent = '#' + t.id;
+      $('#modalSender').textContent = t.senderAccount === '1001' ? 'User 1 (1001)' : t.senderAccount;
+      $('#modalReceiver').textContent = t.receiverAccount === '1002' ? 'User 2 (1002)' : t.receiverAccount;
+      $('#modalAmount').textContent = money(t.amount);
+      $('#modalRule').textContent = (item.rules || []).map(r => r.name).join(', ') || 'Anomaly Detected';
+      $('#reviewComment').value = 'Identity verified and transaction authorized by Admin';
+
+      $('#reviewModal').classList.add('show');
+    }
+
+    function closeModal() {
+      $('#reviewModal').classList.remove('show');
+      activeModalItem = null;
+    }
+
+    async function submitDecision(decision) {
+      if (!activeModalItem) return;
+      const id = activeModalItem.id;
+      const comment = $('#reviewComment').value.trim();
+
       try {
         await api(`/api/flagged/${id}/review`, {
           method: 'POST',
-          body: JSON.stringify({ decision, reviewer, comment: comment || null })
+          body: JSON.stringify({ decision, reviewer: 'Admin', comment: comment || null })
         });
-        toast(`Flagged item #${id} ${decision.toLowerCase()}.`);
-        loadAll();
+        closeModal();
+        toast(`Transaction #${id} was ${decision.toLowerCase()} by Admin! Funds transfer completed.`);
+        await loadAll();
       } catch (err) {
         toast(err.message, 'err');
-        loadAll();
       }
-    });
-
-    /* ---------- Dashboard ---------- */
-    async function loadDashboard() {
-      const rows = await api('/api/dashboard/flagged-by-rule');
-      const max = Math.max(1, ...rows.map((r) => r.flaggedCount));
-      $('#dashboard').innerHTML = rows.length ? rows.map((r) => `
-        <div>
-          <div class="bar-label"><span>${esc(r.ruleName)}</span><b>${r.flaggedCount}</b></div>
-          <div class="bar-track"><div class="bar-fill" style="width:${(r.flaggedCount / max) * 100}%"></div></div>
-        </div>`).join('') : '<div class="empty">No flagged transactions yet.</div>';
     }
 
-    /* ---------- Rules ---------- */
-    function describe(r) {
-      return r.type === 'AMOUNT_THRESHOLD'
-        ? `amount &gt; ${money(r.thresholdAmount)}`
-        : `more than ${r.maxCount} in ${r.windowSeconds}s`;
-    }
-
-    async function loadRules() {
-      rulesCache = await api('/api/rules');
-      $('#rulesBody').innerHTML = rulesCache.length ? rulesCache.map((r) => `
-        <tr>
-          <td>${esc(r.name)}</td>
-          <td>${esc(r.type.replace('_', ' '))}</td>
-          <td>${describe(r)}</td>
-          <td><span class="badge ${r.active ? 'COMPLETED' : 'off'}">${r.active ? 'Active' : 'Off'}</span></td>
-          <td class="actions"><button class="small ghost" data-edit="${r.id}">Edit</button></td>
-        </tr>`).join('') : '<tr><td colspan="5" class="empty">No rules configured.</td></tr>';
-    }
-
-    function syncRuleType() {
-      const velocity = $('#ruleType').value === 'VELOCITY';
-      $('#thresholdWrap').hidden = velocity;
-      $('#velocityWrap').hidden = !velocity;
-    }
-    $('#ruleType').addEventListener('change', syncRuleType);
-
-    function resetRuleForm() {
-      editingRuleId = null;
-      $('#ruleForm').reset();
-      $('#ruleFormTitle').textContent = 'Add Rule';
-      $('#ruleCancel').hidden = true;
-      syncRuleType();
-    }
-    $('#ruleCancel').addEventListener('click', resetRuleForm);
-
-    $('#rulesBody').addEventListener('click', (e) => {
-      const id = e.target.dataset.edit;
-      if (!id) return;
-      const r = rulesCache.find((x) => String(x.id) === id);
-      if (!r) return;
-      editingRuleId = r.id;
-      $('#ruleFormTitle').textContent = 'Edit Rule #' + r.id;
-      $('#ruleName').value = r.name;
-      $('#ruleType').value = r.type;
-      $('#ruleThreshold').value = r.thresholdAmount ?? '';
-      $('#ruleMax').value = r.maxCount ?? '';
-      $('#ruleWindow').value = r.windowSeconds ?? '';
-      $('#ruleActive').checked = r.active;
-      $('#ruleCancel').hidden = false;
-      syncRuleType();
-      $('#ruleName').focus();
-    });
-
-    $('#ruleForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const type = $('#ruleType').value;
-      const body = { name: $('#ruleName').value, type, active: $('#ruleActive').checked };
-      if (type === 'AMOUNT_THRESHOLD') {
-        body.thresholdAmount = $('#ruleThreshold').value;
-      } else {
-        body.maxCount = $('#ruleMax').value;
-        body.windowSeconds = $('#ruleWindow').value;
-      }
+    async function quickBlock(id) {
+      if (!confirm(`Are you sure you want to block transaction #${id}? Funds will not transfer.`)) return;
       try {
-        const editing = editingRuleId !== null;
-        await api(editing ? `/api/rules/${editingRuleId}` : '/api/rules', {
-          method: editing ? 'PUT' : 'POST',
-          body: JSON.stringify(body)
+        await api(`/api/flagged/${id}/review`, {
+          method: 'POST',
+          body: JSON.stringify({ decision: 'BLOCKED', reviewer: 'Admin', comment: 'Rejected by Admin' })
         });
-        toast(editing ? 'Rule updated.' : 'Rule created.');
-        resetRuleForm();
-        loadRules();
+        toast(`Transaction #${id} blocked.`, 'err');
+        await loadAll();
       } catch (err) {
         toast(err.message, 'err');
       }
-    });
+    }
 
-    /* ---------- Init ---------- */
+    /* ---------- Load Data ---------- */
     async function loadAll() {
       try {
-        await Promise.all([loadTransactions(), loadQueue(), loadDashboard(), loadRules()]);
+        const [users, txns, rules, dashboard] = await Promise.all([
+          api('/api/users'),
+          api('/api/transactions'),
+          api('/api/rules'),
+          api('/api/dashboard/flagged-by-rule')
+        ]);
+
+        // Balances
+        const u1 = users.find(u => u.username === 'user1' || u.accountNumber === '1001');
+        const u2 = users.find(u => u.username === 'user2' || u.accountNumber === '1002');
+        if (u1) {
+          $('#u1BalDisplay').textContent = money(u1.balance);
+          $('#adminU1Bal').textContent = money(u1.balance);
+        }
+        if (u2) {
+          $('#u2BalDisplay').textContent = money(u2.balance);
+          $('#adminU2Bal').textContent = money(u2.balance);
+        }
+
+        // User 1 Transactions
+        const u1Txns = txns.filter(t => t.senderAccount === '1001' || t.receiverAccount === '1001');
+        $('#u1TxnTable').innerHTML = u1Txns.length ? u1Txns.map(t => {
+          const isSender = t.senderAccount === '1001';
+          const type = isSender ? '<span style="color:#f87171;">Outgoing</span>' : '<span style="color:#34d399;">Incoming</span>';
+          const counterparty = isSender ? ('To: ' + (t.receiverAccount === '1002' ? 'User 2 (1002)' : t.receiverAccount))
+                                        : ('From: ' + (t.senderAccount === '1002' ? 'User 2 (1002)' : t.senderAccount));
+          return `<tr>
+            <td>#${t.id}</td>
+            <td>${type}</td>
+            <td>${esc(counterparty)}</td>
+            <td><b>${isSender ? '-' : '+'}${money(t.amount)}</b></td>
+            <td>${when(t.timestamp)}</td>
+            <td>${badge(t.status)}</td>
+          </tr>`;
+        }).join('') : '<tr><td colspan="6" class="empty">No transactions for User 1.</td></tr>';
+
+        // User 2 Transactions
+        const u2Txns = txns.filter(t => t.senderAccount === '1002' || t.receiverAccount === '1002');
+        $('#u2TxnTable').innerHTML = u2Txns.length ? u2Txns.map(t => {
+          const isSender = t.senderAccount === '1002';
+          const type = isSender ? '<span style="color:#f87171;">Outgoing</span>' : '<span style="color:#34d399;">Incoming</span>';
+          const counterparty = isSender ? ('To: ' + (t.receiverAccount === '1001' ? 'User 1 (1001)' : t.receiverAccount))
+                                        : ('From: ' + (t.senderAccount === '1001' ? 'User 1 (1001)' : t.senderAccount));
+          return `<tr>
+            <td>#${t.id}</td>
+            <td>${type}</td>
+            <td>${esc(counterparty)}</td>
+            <td><b>${isSender ? '-' : '+'}${money(t.amount)}</b></td>
+            <td>${when(t.timestamp)}</td>
+            <td>${badge(t.status)}</td>
+          </tr>`;
+        }).join('') : '<tr><td colspan="6" class="empty">No transactions for User 2.</td></tr>';
+
+        // Master Ledger
+        $('#masterTxnBody').innerHTML = txns.length ? txns.map(t => `
+          <tr>
+            <td>#${t.id}</td>
+            <td>${esc(t.senderAccount === '1001' ? 'User 1 (1001)' : t.senderAccount)}</td>
+            <td>${esc(t.receiverAccount === '1002' ? 'User 2 (1002)' : t.receiverAccount)}</td>
+            <td><b>${money(t.amount)}</b></td>
+            <td>${when(t.timestamp)}</td>
+            <td>${badge(t.status)}</td>
+          </tr>`).join('') : '<tr><td colspan="6" class="empty">No transactions in system.</td></tr>';
+
+        // Admin Rules
+        $('#adminRulesBody').innerHTML = rules.length ? rules.map(r => `
+          <tr>
+            <td><b>${esc(r.name)}</b></td>
+            <td>${r.type === 'AMOUNT_THRESHOLD' ? 'Amount > ' + money(r.thresholdAmount) : '> ' + r.maxCount + ' in ' + r.windowSeconds + 's'}</td>
+            <td><span class="badge ${r.active ? 'COMPLETED' : 'off'}">${r.active ? 'Active' : 'Off'}</span></td>
+          </tr>`).join('') : '<tr><td colspan="3" class="empty">No rules found.</td></tr>';
+
+        // Admin Dashboard
+        const max = Math.max(1, ...dashboard.map(r => r.flaggedCount));
+        $('#adminDashboard').innerHTML = dashboard.length ? dashboard.map(r => `
+          <div>
+            <div class="bar-label"><span>${esc(r.ruleName)}</span><b>${r.flaggedCount} flagged</b></div>
+            <div class="bar-track"><div class="bar-fill" style="width:${(r.flaggedCount / max) * 100}%"></div></div>
+          </div>`).join('') : '<div class="empty">No flagged data.</div>';
+
+        // Admin Queue
+        await loadAdminQueue();
       } catch (err) {
-        toast(err.message, 'err');
+        console.error('loadAll error:', err);
       }
     }
 
-    syncRuleType();
+    // Init
     loadAll();
   </script>
 </body>
+
 </html>

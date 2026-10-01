@@ -24,23 +24,42 @@ public class TransactionService {
     private final RuleRepository ruleRepository;
     private final FlaggedTransactionRepository flaggedRepository;
     private final RuleEvaluator evaluator;
+    private final com.fraudwatch.repository.UserRepository userRepository;
 
     public TransactionService(TransactionRepository transactionRepository, RuleRepository ruleRepository,
-                              FlaggedTransactionRepository flaggedRepository, RuleEvaluator evaluator) {
+                              FlaggedTransactionRepository flaggedRepository, RuleEvaluator evaluator,
+                              com.fraudwatch.repository.UserRepository userRepository) {
         this.transactionRepository = transactionRepository;
         this.ruleRepository = ruleRepository;
         this.flaggedRepository = flaggedRepository;
         this.evaluator = evaluator;
+        this.userRepository = userRepository;
     }
 
     /** Records a transaction and evaluates all active rules BEFORE it is persisted. */
     @Transactional
     public Transaction create(Transaction req) {
-        String sender = req.getSenderAccount().trim();
-        String receiver = req.getReceiverAccount().trim();
+        String sender = req.getSenderAccount() != null ? req.getSenderAccount().trim() : "";
+        String receiver = req.getReceiverAccount() != null ? req.getReceiverAccount().trim() : "";
+        if (!sender.matches("^\\d+$") || !receiver.matches("^\\d+$")) {
+            throw new BadRequestException("Sender and receiver accounts must contain only numbers");
+        }
         if (sender.equalsIgnoreCase(receiver)) {
+            if ("1001".equals(sender)) {
+                throw new BadRequestException("User 1 cannot send money to User 1");
+            } else if ("1002".equals(sender)) {
+                throw new BadRequestException("User 2 cannot send money to User 2");
+            }
             throw new BadRequestException("Sender and receiver accounts must be different");
         }
+
+        // Validate sender balance if registered user account
+        userRepository.findByAccountNumber(sender).ifPresent(senderUser -> {
+            if (senderUser.getBalance().compareTo(req.getAmount()) < 0) {
+                throw new BadRequestException("Insufficient balance in account " + sender
+                        + ". Current balance: $" + senderUser.getBalance() + ", Requested: $" + req.getAmount());
+            }
+        });
 
         // Build a fresh entity so a client can never set id / status directly.
         Transaction txn = new Transaction();
@@ -72,6 +91,16 @@ public class TransactionService {
             for (Rule r : triggered) names.add(r.getName());
             names.sort(String::compareTo);
             txn.setTriggeredRules(names);
+        } else {
+            // Passed all rules: execute balance transfer immediately
+            userRepository.findByAccountNumber(sender).ifPresent(senderUser -> {
+                senderUser.setBalance(senderUser.getBalance().subtract(req.getAmount()));
+                userRepository.save(senderUser);
+            });
+            userRepository.findByAccountNumber(receiver).ifPresent(receiverUser -> {
+                receiverUser.setBalance(receiverUser.getBalance().add(req.getAmount()));
+                userRepository.save(receiverUser);
+            });
         }
         return txn;
     }

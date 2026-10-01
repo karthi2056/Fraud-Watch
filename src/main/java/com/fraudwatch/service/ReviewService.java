@@ -20,10 +20,14 @@ public class ReviewService {
 
     private final FlaggedTransactionRepository flaggedRepository;
     private final ReviewOutcomeRepository outcomeRepository;
+    private final com.fraudwatch.repository.UserRepository userRepository;
 
-    public ReviewService(FlaggedTransactionRepository flaggedRepository, ReviewOutcomeRepository outcomeRepository) {
+    public ReviewService(FlaggedTransactionRepository flaggedRepository,
+                         ReviewOutcomeRepository outcomeRepository,
+                         com.fraudwatch.repository.UserRepository userRepository) {
         this.flaggedRepository = flaggedRepository;
         this.outcomeRepository = outcomeRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -66,6 +70,20 @@ public class ReviewService {
         if (req.getDecision() == Decision.APPROVED) {
             flagged.setReviewStatus(ReviewStatus.APPROVED);
             txn.setStatus(TransactionStatus.COMPLETED);
+
+            // Execute balance transfer now that Admin has approved
+            userRepository.findByAccountNumber(txn.getSenderAccount()).ifPresent(senderUser -> {
+                if (senderUser.getBalance().compareTo(txn.getAmount()) < 0) {
+                    throw new InvalidStateException("Sender account (" + txn.getSenderAccount()
+                            + ") has insufficient funds ($" + senderUser.getBalance() + ") to complete approved amount ($" + txn.getAmount() + ")");
+                }
+                senderUser.setBalance(senderUser.getBalance().subtract(txn.getAmount()));
+                userRepository.save(senderUser);
+            });
+            userRepository.findByAccountNumber(txn.getReceiverAccount()).ifPresent(receiverUser -> {
+                receiverUser.setBalance(receiverUser.getBalance().add(txn.getAmount()));
+                userRepository.save(receiverUser);
+            });
         } else {
             flagged.setReviewStatus(ReviewStatus.BLOCKED);
             txn.setStatus(TransactionStatus.BLOCKED); // never completes / touches balances
